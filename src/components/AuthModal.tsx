@@ -19,12 +19,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [isUnauthorizedDomain, setIsUnauthorizedDomain] = useState(false);
 
   if (!isOpen) return null;
+
+  const currentHost = typeof window !== 'undefined' ? window.location.hostname : '';
 
   const handleGoogleSignIn = async () => {
     setLoading(true);
     setErrorMsg(null);
+    setIsUnauthorizedDomain(false);
     try {
       const user = await signInWithGoogle();
       onAuthSuccess({
@@ -37,7 +41,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       onClose();
     } catch (err: any) {
       console.error(err);
-      setErrorMsg(err.message || 'Failed to sign in with Google');
+      if (err.code === 'auth/unauthorized-domain' || err.message?.includes('unauthorized-domain')) {
+        setIsUnauthorizedDomain(true);
+        setErrorMsg(`The domain '${currentHost}' is not yet in Firebase's Authorized Domains list.`);
+      } else {
+        setErrorMsg(err.message || 'Failed to sign in with Google');
+      }
     } finally {
       setLoading(false);
     }
@@ -108,9 +117,37 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         </div>
 
         {errorMsg && (
-          <div className="mb-4 p-3 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs flex items-start gap-2">
-            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-            <span>{errorMsg}</span>
+          <div className="mb-4 p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-200 text-xs space-y-2">
+            <div className="flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0 text-rose-400 mt-0.5" />
+              <div className="space-y-1">
+                <span className="font-semibold text-rose-300">
+                  {isUnauthorizedDomain ? 'Firebase Domain Restriction' : 'Authentication Error'}
+                </span>
+                <p className="text-slate-300 leading-relaxed">{errorMsg}</p>
+              </div>
+            </div>
+
+            {isUnauthorizedDomain && (
+              <div className="pt-2 mt-2 border-t border-rose-500/20 space-y-2">
+                <div className="bg-slate-950/60 p-2.5 rounded-lg border border-slate-800 text-[11px] text-slate-300">
+                  <p className="font-medium text-amber-300 mb-1">How to fix in Firebase Console:</p>
+                  <ol className="list-decimal pl-4 space-y-0.5 text-slate-400">
+                    <li>Go to <strong className="text-white">Firebase Console &gt; Authentication &gt; Settings</strong></li>
+                    <li>Click <strong className="text-white">Authorized domains</strong> &gt; <strong className="text-white">Add domain</strong></li>
+                    <li>Add: <code className="text-indigo-300 font-mono bg-indigo-950/40 px-1 py-0.5 rounded">{currentHost || 'your-vercel-domain.vercel.app'}</code></li>
+                  </ol>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleDemoSignIn}
+                  className="w-full py-2 px-3 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs flex items-center justify-center gap-1.5 transition"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                  Bypass with Instant Evaluator Access
+                </button>
+              </div>
+            )}
           </div>
         )}
 
