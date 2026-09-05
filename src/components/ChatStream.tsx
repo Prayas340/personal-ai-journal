@@ -3,9 +3,7 @@ import ReactMarkdown from 'react-markdown';
 import {
   Sparkles,
   ShieldAlert,
-  Bookmark,
   Share2,
-  Activity,
   Paperclip,
   Code,
   Mic,
@@ -61,7 +59,6 @@ export const ChatStream: React.FC<ChatStreamProps> = ({
     'act-2': false,
     'act-3': false
   });
-  const [isBookmarked, setIsBookmarked] = useState(false);
   const [copyToast, setCopyToast] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [speechError, setSpeechError] = useState<string | null>(null);
@@ -325,28 +322,6 @@ export const ChatStream: React.FC<ChatStreamProps> = ({
               title="Export Reflection as Markdown (.md)"
             >
               <Download className="w-4 h-4 shrink-0" />
-            </button>
-
-            {/* Bookmark */}
-            <button
-              onClick={() => setIsBookmarked(!isBookmarked)}
-              className={`w-9 h-9 rounded-xl border transition cursor-pointer flex items-center justify-center shrink-0 ${
-                isBookmarked
-                  ? 'bg-blue-50 border-blue-200 text-blue-600'
-                  : 'bg-slate-50 hover:bg-slate-100 border-slate-200/80 text-slate-500'
-              }`}
-              title={isBookmarked ? 'Bookmarked' : 'Bookmark this session'}
-            >
-              <Bookmark className="w-4 h-4 shrink-0" />
-            </button>
-
-            {/* New Session */}
-            <button
-              onClick={onNewSession}
-              className="w-9 h-9 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200/80 text-slate-600 hover:text-slate-900 transition cursor-pointer flex items-center justify-center shrink-0"
-              title="Start New Reflection Session"
-            >
-              <Activity className="w-4 h-4 shrink-0" />
             </button>
           </div>
         </div>
