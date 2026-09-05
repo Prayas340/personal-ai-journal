@@ -3,7 +3,6 @@ import ReactMarkdown from 'react-markdown';
 import {
   Sparkles,
   ShieldAlert,
-  Share2,
   Paperclip,
   Code,
   Mic,
@@ -21,6 +20,7 @@ import {
 import { ChatMessage, ActionItem, UserProfile } from '../types';
 import { RocketLogo } from './RocketLogo';
 import { LottieLoading } from './LottieLoading';
+import { AnimatedBookmarkIcon } from './AnimatedBookmarkIcon';
 import { extractSearchRelatedTags } from '../lib/tagExtractor';
 
 interface ChatStreamProps {
@@ -60,6 +60,8 @@ export const ChatStream: React.FC<ChatStreamProps> = ({
     'act-3': false
   });
   const [copyToast, setCopyToast] = useState(false);
+  const [saveBtnHovered, setSaveBtnHovered] = useState(false);
+  const [saveClickTrigger, setSaveClickTrigger] = useState(0);
   const [isListening, setIsListening] = useState(false);
   const [speechError, setSpeechError] = useState<string | null>(null);
   const [attachedFileName, setAttachedFileName] = useState<string | null>(null);
@@ -284,7 +286,12 @@ export const ChatStream: React.FC<ChatStreamProps> = ({
           <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
             {/* Save Journal Entry Button */}
             <button
-              onClick={onSaveSession}
+              onClick={() => {
+                setSaveClickTrigger(prev => prev + 1);
+                onSaveSession();
+              }}
+              onMouseEnter={() => setSaveBtnHovered(true)}
+              onMouseLeave={() => setSaveBtnHovered(false)}
               disabled={isSaving || messages.length === 0}
               className={`h-9 px-3 rounded-xl border text-xs font-medium transition cursor-pointer flex items-center justify-center gap-1.5 shrink-0 disabled:opacity-40 disabled:cursor-not-allowed ${
                 saveSuccess
@@ -305,7 +312,12 @@ export const ChatStream: React.FC<ChatStreamProps> = ({
                 </>
               ) : (
                 <>
-                  <Share2 className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                  <AnimatedBookmarkIcon
+                    size={16}
+                    trigger={saveClickTrigger}
+                    isHovered={saveBtnHovered}
+                    className="shrink-0 text-blue-600"
+                  />
                   <span>Save</span>
                 </>
               )}
