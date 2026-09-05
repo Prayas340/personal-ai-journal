@@ -4,7 +4,9 @@ import {
   LogOut,
   LogIn,
   CheckCircle2,
-  ChevronDown
+  ChevronDown,
+  PanelLeft,
+  Plus
 } from 'lucide-react';
 import { UserProfile } from '../types';
 import { RocketLogo } from './RocketLogo';
@@ -13,12 +15,18 @@ interface NavbarProps {
   user: UserProfile | null;
   onOpenAuthModal: () => void;
   onSignOut: () => void;
+  onToggleSidebar?: () => void;
+  isSidebarOpen?: boolean;
+  onNewChat?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
   user,
   onOpenAuthModal,
-  onSignOut
+  onSignOut,
+  onToggleSidebar,
+  isSidebarOpen,
+  onNewChat
 }) => {
   const [secondsRemaining, setSecondsRemaining] = useState(2901); // 48:21
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -42,12 +50,40 @@ export const Navbar: React.FC<NavbarProps> = ({
   const initial = (displayName || email || 'U').charAt(0).toUpperCase();
 
   return (
-    <header className="bg-transparent pt-3 pb-1 px-4 sm:px-6">
+    <header className="bg-transparent pt-3 pb-1 px-3 sm:px-6 shrink-0">
       <div className="max-w-7xl mx-auto flex flex-col gap-2">
         {/* Main Header Row */}
         <div className="flex items-center justify-between gap-3">
-          {/* Left: Brand & Live Indicator */}
-          <div className="flex items-center gap-2.5 min-w-0">
+          {/* Left: Sidebar Toggle, Brand & Live Indicator */}
+          <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+            {onToggleSidebar && (
+              <button
+                type="button"
+                onClick={onToggleSidebar}
+                className={`p-2 rounded-xl border transition cursor-pointer shrink-0 ${
+                  isSidebarOpen
+                    ? 'bg-blue-50 border-blue-200 text-blue-600'
+                    : 'bg-white hover:bg-slate-100 border-slate-200/80 text-slate-600'
+                }`}
+                aria-label="Toggle chat history sidebar"
+                title={isSidebarOpen ? 'Close chat history' : 'Open chat history'}
+              >
+                <PanelLeft className="w-4 h-4" />
+              </button>
+            )}
+
+            {onNewChat && (
+              <button
+                type="button"
+                onClick={onNewChat}
+                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-xs font-medium text-slate-700 transition cursor-pointer shadow-2xs shrink-0"
+                title="Start a new chat session"
+              >
+                <Plus className="w-3.5 h-3.5 text-blue-600" />
+                <span>New Chat</span>
+              </button>
+            )}
+
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-sm shadow-blue-500/30 shrink-0">
               <RocketLogo className="text-white" size={17} />
             </div>

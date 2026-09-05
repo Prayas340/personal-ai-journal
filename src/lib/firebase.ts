@@ -421,9 +421,24 @@ export async function saveJournalEntry(
 }
 
 /**
- * Delete journal entry from Cloud Firestore
+ * Delete journal entry from Cloud Firestore & local cache
  */
 export async function deleteJournalEntry(userId: string, journalId: string) {
+  if (!userId || !journalId) return;
+
+  // Immediately remove from local cache mirror
+  try {
+    const localKey = `journal_entry_${userId}_${journalId}`;
+    localStorage.removeItem(localKey);
+    const indexKey = `user_journals_${userId}`;
+    const existing: string[] = JSON.parse(localStorage.getItem(indexKey) || '[]');
+    const updated = existing.filter((id) => id !== journalId);
+    localStorage.setItem(indexKey, JSON.stringify(updated));
+  } catch (e) {
+    console.warn('Local mirror delete notice:', e);
+  }
+
+  // Delete from Firestore
   try {
     const journalDocRef = doc(db, 'users', userId, 'journals', journalId);
     await deleteDoc(journalDocRef);
