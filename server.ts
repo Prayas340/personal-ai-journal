@@ -216,7 +216,7 @@ function extractSearchRelatedKeywords(text: string): string[] {
 
 // Resilient Gemini content generation with multi-model fallback
 async function generateGeminiContentWithFallback(ai: GoogleGenAI, contents: any, systemInstruction: string, temperature = 0.3) {
-  const candidateModels = ['gemini-3.8-flash', 'gemini-3.1-flash-lite', 'gemini-flash-latest'];
+  const candidateModels = ['gemini-3.6-flash', 'gemini-3.8-flash', 'gemini-2.5-flash', 'gemini-flash-latest'];
   let lastError: any = null;
 
   for (const model of candidateModels) {
@@ -268,7 +268,7 @@ function getGeminiClient(): GoogleGenAI {
   if (!geminiClient) {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      throw new Error('GEMINI_API_KEY environment variable is required.');
+      throw new Error('GEMINI_API_KEY is not set in environment.');
     }
     geminiClient = new GoogleGenAI({ apiKey });
   }

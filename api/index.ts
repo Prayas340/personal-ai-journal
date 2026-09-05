@@ -1,23 +1,197 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import crypto from 'crypto';
 import { GoogleGenAI } from '@google/genai';
-import {
-  registerUser,
-  authenticateUser,
-  authenticateGoogleUser,
-  createSessionToken,
-  getUserByUid
-} from '../server/authStore';
 
 dotenv.config();
 
+// -------------------------------------------------------------
+// 1. Inlined Auth Store (Zero External Relative Import Overhead for Vercel)
+// -------------------------------------------------------------
+export interface StoredUser {
+  uid: string;
+  email: string;
+  displayName: string;
+  photoURL: string;
+  salt: string;
+  passwordHash: string;
+  provider: 'password' | 'google';
+  createdAt: string;
+  updatedAt: string;
+}
+
+const memoryUsers = new Map<string, StoredUser>();
+
+export function hashPassword(password: string, salt: string): string {
+  return crypto.scryptSync(password, salt, 64).toString('hex');
+}
+
+export function verifyPassword(password: string, salt: string, expectedHash: string): boolean {
+  try {
+    const calculatedHash = hashPassword(password, salt);
+    return crypto.timingSafeEqual(
+      Buffer.from(calculatedHash, 'hex'),
+      Buffer.from(expectedHash, 'hex')
+    );
+  } catch {
+    return false;
+  }
+}
+
+export function registerUser(email: string, password: string, displayName?: string): StoredUser {
+  const cleanEmail = (email || '').trim().toLowerCase();
+  if (!cleanEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+    throw new Error('Please provide a valid email address.');
+  }
+
+  if (!password || password.length < 6) {
+    throw new Error('Password must be at least 6 characters.');
+  }
+
+  if (memoryUsers.has(cleanEmail)) {
+    throw new Error('An account with this email already exists. Please sign in instead.');
+  }
+
+  const salt = crypto.randomBytes(16).toString('hex');
+  const passwordHash = hashPassword(password, salt);
+  const safeName = (displayName || '').trim() || cleanEmail.split('@')[0];
+  const uid = `usr_${crypto.randomBytes(8).toString('hex')}`;
+
+  const newUser: StoredUser = {
+    uid,
+    email: cleanEmail,
+    displayName: safeName.charAt(0).toUpperCase() + safeName.slice(1),
+    photoURL: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(safeName)}&backgroundColor=4f46e5`,
+    salt,
+    passwordHash,
+    provider: 'password',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+
+  memoryUsers.set(cleanEmail, newUser);
+  return newUser;
+}
+
+export function authenticateUser(email: string, password: string): StoredUser {
+  const cleanEmail = (email || '').trim().toLowerCase();
+  if (!cleanEmail) {
+    throw new Error('Email is required.');
+  }
+
+  if (!password) {
+    throw new Error('Password is required.');
+  }
+
+  const user = memoryUsers.get(cleanEmail);
+  if (!user) {
+    throw new Error('No account found with this email. Please check your email or register.');
+  }
+
+  if (user.provider === 'google' && !user.passwordHash) {
+    throw new Error('This account was created with Google Sign-In. Please click Continue with Google.');
+  }
+
+  const isValid = verifyPassword(password, user.salt, user.passwordHash);
+  if (!isValid) {
+    throw new Error('Incorrect password. Please verify your password and try again.');
+  }
+
+  return user;
+}
+
+export async function authenticateGoogleUser(token: string): Promise<StoredUser> {
+  let googleEmail = '';
+  let googleName = '';
+  let googlePicture = '';
+
+  try {
+    const idRes = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(token)}`);
+    if (idRes.ok) {
+      const idData = await idRes.json();
+      if (idData.email) {
+        googleEmail = idData.email.toLowerCase();
+        googleName = idData.name || idData.given_name || googleEmail.split('@')[0];
+        googlePicture = idData.picture || '';
+      }
+    }
+  } catch {}
+
+  if (!googleEmail) {
+    try {
+      const infoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (infoRes.ok) {
+        const infoData = await infoRes.json();
+        if (infoData.email) {
+          googleEmail = infoData.email.toLowerCase();
+          googleName = infoData.name || infoData.given_name || googleEmail.split('@')[0];
+          googlePicture = infoData.picture || '';
+        }
+      }
+    } catch {}
+  }
+
+  if (!googleEmail) {
+    throw new Error('Invalid or expired Google authentication token.');
+  }
+
+  let user = memoryUsers.get(googleEmail);
+  if (!user) {
+    const uid = `usr_g_${crypto.randomBytes(8).toString('hex')}`;
+    user = {
+      uid,
+      email: googleEmail,
+      displayName: googleName || googleEmail.split('@')[0],
+      photoURL: googlePicture || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(googleName || googleEmail)}&backgroundColor=4f46e5`,
+      salt: '',
+      passwordHash: '',
+      provider: 'google',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    memoryUsers.set(googleEmail, user);
+  } else if (googlePicture && user.photoURL !== googlePicture) {
+    user.photoURL = googlePicture;
+    user.updatedAt = new Date().toISOString();
+  }
+
+  return user;
+}
+
+export function createSessionToken(user: StoredUser): string {
+  const randomSuffix = crypto.randomBytes(16).toString('hex');
+  return `session-token-${user.uid}-${Date.now()}-${randomSuffix}`;
+}
+
+export function getUserByUid(uid: string): StoredUser | null {
+  for (const user of memoryUsers.values()) {
+    if (user.uid === uid) return user;
+  }
+  return null;
+}
+
+// -------------------------------------------------------------
+// 2. Express Serverless App Initialization
+// -------------------------------------------------------------
 const app = express();
 
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
-// Helper to decode JWT payload without heavy native/esm dependencies
+// Route normalizer: Handles both /api/chat and /chat seamlessly
+app.use((req, res, next) => {
+  if (req.url.startsWith('/api/')) {
+    req.url = req.url.substring(4);
+  } else if (req.url === '/api') {
+    req.url = '/';
+  }
+  next();
+});
+
+// Helper to decode JWT payload without heavy native dependencies
 function decodeJwtPayload(token: string) {
   try {
     const parts = token.split('.');
@@ -115,8 +289,21 @@ export async function authenticateFirebaseUser(
 }
 
 // -------------------------------------------------------------
-// 2. Google AI Studio / Gemini Enterprise Constitution
+// 3. Gemini Client & Enterprise Constitution
 // -------------------------------------------------------------
+let geminiClient: GoogleGenAI | null = null;
+
+function getGeminiClient(): GoogleGenAI {
+  if (!geminiClient) {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      throw new Error('GEMINI_API_KEY is not set in environment.');
+    }
+    geminiClient = new GoogleGenAI({ apiKey });
+  }
+  return geminiClient;
+}
+
 const ENTERPRISE_CONSTITUTION_INSTRUCTION = `
 You are the Personal AI Journal Assistant, operating with deep reflective clarity, high emotional intelligence, and strategic guidance.
 
@@ -183,9 +370,9 @@ function extractSearchRelatedKeywords(text: string): string[] {
   return tags;
 }
 
-// Resilient Gemini content generation with multi-model fallback
+// Resilient Gemini content generation with multi-model fallback (gemini-3.6-flash prioritized)
 async function generateGeminiContentWithFallback(ai: GoogleGenAI, contents: any, systemInstruction: string, temperature = 0.3) {
-  const candidateModels = ['gemini-3.8-flash', 'gemini-3.1-flash-lite', 'gemini-flash-latest'];
+  const candidateModels = ['gemini-3.6-flash', 'gemini-3.8-flash', 'gemini-2.5-flash', 'gemini-flash-latest'];
   let lastError: any = null;
 
   for (const model of candidateModels) {
@@ -233,24 +420,12 @@ function checkAdversarialInjection(input: string): { blocked: boolean; reason?: 
   return { blocked: false };
 }
 
-let geminiClient: GoogleGenAI | null = null;
-function getGeminiClient(): GoogleGenAI {
-  if (!geminiClient) {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      throw new Error('GEMINI_API_KEY environment variable is required.');
-    }
-    geminiClient = new GoogleGenAI({ apiKey });
-  }
-  return geminiClient;
-}
-
 // -------------------------------------------------------------
-// 3. API Routes
+// 4. API Endpoints
 // -------------------------------------------------------------
 
-// Health check
-app.get('/api/health', (req, res) => {
+// Health check endpoint (matches / and /health)
+app.get(['/', '/health'], (req, res) => {
   res.json({
     status: 'healthy',
     timestamp: new Date().toISOString(),
@@ -261,7 +436,7 @@ app.get('/api/health', (req, res) => {
 });
 
 // User registration endpoint with email & password
-app.post('/api/auth/register', async (req, res) => {
+app.post('/auth/register', async (req, res) => {
   try {
     const { email, password, name } = req.body;
     if (!email || !password) {
@@ -287,7 +462,7 @@ app.post('/api/auth/register', async (req, res) => {
 });
 
 // User login endpoint with cryptographic password verification
-app.post('/api/auth/login', async (req, res) => {
+app.post('/auth/login', async (req, res) => {
   try {
     const { email, password } = req.body;
     if (!email || !password) {
@@ -312,7 +487,7 @@ app.post('/api/auth/login', async (req, res) => {
 });
 
 // Google OAuth verification endpoint
-app.post('/api/auth/google', async (req, res) => {
+app.post('/auth/google', async (req, res) => {
   try {
     const { token } = req.body;
     if (!token) {
@@ -337,7 +512,7 @@ app.post('/api/auth/google', async (req, res) => {
 });
 
 // Verify token endpoint
-app.get('/api/auth/verify', authenticateFirebaseUser, (req, res) => {
+app.get('/auth/verify', authenticateFirebaseUser, (req, res) => {
   const user = (req as any).user;
   res.json({
     authenticated: true,
@@ -346,7 +521,7 @@ app.get('/api/auth/verify', authenticateFirebaseUser, (req, res) => {
 });
 
 // Multi-turn Chat Endpoint with AI Constitution
-app.post('/api/chat', authenticateFirebaseUser, async (req, res) => {
+app.post('/chat', authenticateFirebaseUser, async (req, res) => {
   try {
     const { messages, journalId } = req.body;
 
@@ -456,7 +631,7 @@ app.post('/api/chat', authenticateFirebaseUser, async (req, res) => {
 
     return res.json(payload);
   } catch (error: any) {
-    console.error('[API /api/chat] Error:', error);
+    console.error('[API /chat] Error:', error);
     const userQuery = req.body?.messages?.[req.body.messages.length - 1]?.content || '';
     const fallbackTags = extractSearchRelatedKeywords(userQuery);
     return res.json({
@@ -473,7 +648,7 @@ app.post('/api/chat', authenticateFirebaseUser, async (req, res) => {
 });
 
 // Mood & Action Extraction Engine
-app.post('/api/extract', authenticateFirebaseUser, async (req, res) => {
+app.post('/extract', authenticateFirebaseUser, async (req, res) => {
   try {
     const { text, journalId } = req.body;
 
@@ -528,7 +703,7 @@ Return pure JSON matching this exact structure:
       journalId
     });
   } catch (error: any) {
-    console.error('[API /api/extract] Error:', error);
+    console.error('[API /extract] Error:', error);
     const searchTags = extractSearchRelatedKeywords(req.body?.text || '');
     return res.json({
       success: true,
@@ -545,17 +720,21 @@ Return pure JSON matching this exact structure:
 });
 
 // Journals fallback endpoint
-app.get('/api/journals', authenticateFirebaseUser, async (req, res) => {
+app.get('/journals', authenticateFirebaseUser, async (req, res) => {
   return res.json({ journals: [] });
 });
 
-app.post('/api/journals', authenticateFirebaseUser, async (req, res) => {
+app.post('/journals', authenticateFirebaseUser, async (req, res) => {
   const { id } = req.body;
   return res.json({ success: true, journalId: id || `journal_${Date.now()}` });
 });
 
-app.delete('/api/journals/:id', authenticateFirebaseUser, async (req, res) => {
+app.delete('/journals/:id', authenticateFirebaseUser, async (req, res) => {
   return res.json({ success: true, deletedId: req.params.id });
 });
 
-export default app;
+// Export both default function handler and app for universal runtime support
+export default function handler(req: any, res: any) {
+  return app(req, res);
+}
+export { app };
