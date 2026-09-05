@@ -278,9 +278,6 @@ export const ChatStream: React.FC<ChatStreamProps> = ({
             <span className="px-2.5 py-1 rounded-md bg-blue-50 text-blue-600 font-semibold text-xs tracking-wide uppercase border border-blue-100 shrink-0">
               Personal AI Journal
             </span>
-            <span className="text-xs text-slate-400 font-medium truncate">
-              • Strategic Reflection Track
-            </span>
           </div>
 
           {/* Specified Spaces for Action Icons to prevent mobile compaction */}

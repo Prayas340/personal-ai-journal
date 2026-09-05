@@ -1,6 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
-  Clock,
   LogOut,
   LogIn,
   CheckCircle2,
@@ -28,21 +27,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   isSidebarOpen,
   onNewChat
 }) => {
-  const [secondsRemaining, setSecondsRemaining] = useState(2901); // 48:21
   const [showUserMenu, setShowUserMenu] = useState(false);
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setSecondsRemaining((prev) => (prev > 0 ? prev - 1 : 0));
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  const formatTimer = (totalSeconds: number) => {
-    const mins = Math.floor(totalSeconds / 60);
-    const secs = totalSeconds % 60;
-    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
-  };
 
   const displayName = user?.displayName || (user?.email ? user.email.split('@')[0] : '');
   const email = user?.email || '';
@@ -98,13 +83,8 @@ export const Navbar: React.FC<NavbarProps> = ({
             </div>
           </div>
 
-          {/* Right: Session Timer & User Profile / Sign In */}
+          {/* Right: User Profile / Sign In */}
           <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
-            {/* Session Timer Badge */}
-            <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100/90 border border-slate-200/90 text-xs font-medium text-slate-600 shadow-2xs shrink-0">
-              <Clock className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-              <span>Session Active: {formatTimer(secondsRemaining)} remaining</span>
-            </div>
 
             {/* If Not Logged In: Show Sign In Button */}
             {!user ? (
