@@ -5,7 +5,7 @@ import {
   Trash2,
   PanelLeftClose,
   PanelLeft,
-  Sparkles,
+  RefreshCw,
   Search,
   CheckCircle2,
   Clock,
@@ -195,7 +195,7 @@ export const ChatHistorySidebar: React.FC<ChatHistorySidebarProps> = ({
           </button>
 
           <span className="text-xs font-bold text-slate-700 tracking-tight flex items-center gap-1.5">
-            <Sparkles className="w-3.5 h-3.5 text-blue-500" />
+            <RefreshCw className="w-3.5 h-3.5 text-blue-500" />
             <span>Chat History</span>
           </span>
 
