@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { ChatMessage, ActionItem, UserProfile } from '../types';
 import { RocketLogo } from './RocketLogo';
+import { LottieLoading } from './LottieLoading';
 import { extractSearchRelatedTags } from '../lib/tagExtractor';
 
 interface ChatStreamProps {
@@ -645,8 +646,8 @@ export const ChatStream: React.FC<ChatStreamProps> = ({
 
         {isLoading && (
           <div className="flex items-start gap-2">
-            <div className="bg-white border border-slate-200 rounded-2xl p-4 text-xs text-slate-600 flex items-center gap-2.5 shadow-xs">
-              <RocketLogo className="text-blue-600 animate-pulse shrink-0" size={16} />
+            <div className="bg-white border border-slate-200 rounded-2xl p-3.5 text-xs text-slate-600 flex items-center gap-2.5 shadow-xs">
+              <LottieLoading size={20} className="shrink-0" />
               <span>Synthesizing reflection and action items...</span>
             </div>
           </div>
