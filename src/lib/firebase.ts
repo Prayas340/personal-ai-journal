@@ -130,7 +130,7 @@ export async function signInWithGoogle(): Promise<any> {
       console.warn('GSI fallback notice:', gsiErr.message);
       if (error.code === 'auth/unauthorized-domain') {
         throw new Error(
-          `Domain (${window.location.hostname}) is not in Firebase authorized domains list. Please sign in with Email & Password, or add this domain in Firebase Console.`
+          `Domain (${window.location.hostname}) was not authorized for Google popup. Please sign in with Email & Password or continue as Guest below.`
         );
       }
       throw new Error(gsiErr.message || error.message || 'Google Sign-In failed.');

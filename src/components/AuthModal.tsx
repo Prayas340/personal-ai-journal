@@ -183,7 +183,29 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         {errorMsg && (
           <div className="mb-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-200 text-xs flex items-start gap-2.5 animate-in fade-in duration-150">
             <AlertCircle className="w-4 h-4 shrink-0 text-rose-400 mt-0.5" />
-            <p className="leading-relaxed flex-1">{errorMsg}</p>
+            <div className="flex-1 space-y-2">
+              <p className="leading-relaxed">{errorMsg}</p>
+              <div className="flex flex-wrap items-center gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={handleGuestSignIn}
+                  className="px-2.5 py-1 bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 rounded-lg text-[11px] font-medium transition cursor-pointer flex items-center gap-1"
+                >
+                  <Sparkles className="w-3 h-3 text-rose-300" />
+                  <span>Continue as Guest</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setErrorMsg(null);
+                    setMode('signin');
+                  }}
+                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-[11px] font-medium transition cursor-pointer"
+                >
+                  Sign in with Email
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
