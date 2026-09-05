@@ -38,7 +38,6 @@ interface ChatStreamProps {
 
 // Starter prompt templates that can be inserted with one click
 const ARCHITECTURAL_PROMPTS = [
-  'Reflecting on our engineering roadmap and service migration today: deployment latency improved by 45%, but team context-switching was high. How can we systematize our onboarding checklist?',
   'What are best practices for structuring technical design documents to help cross-functional teams collaborate more efficiently?',
   'Analyze how engineering leads can balance rapid feature delivery with tech-debt remediation in high-velocity teams.',
   'Draft a clear sprint retrospective template focusing on team alignment, velocity metrics, and priority follow-ups.'
@@ -261,7 +260,7 @@ export const ChatStream: React.FC<ChatStreamProps> = ({
     }));
   };
 
-  const authorName = user?.displayName || 'Dr. Priya Sharma';
+  const authorName = user?.displayName || (user?.email ? user.email.split('@')[0] : 'You');
 
   return (
     <div className="flex flex-col h-full bg-white border border-slate-200/90 rounded-3xl overflow-hidden shadow-sm">
@@ -275,25 +274,15 @@ export const ChatStream: React.FC<ChatStreamProps> = ({
       />
 
       {/* Top Header with Responsive Action Grouping */}
-      <div className="p-4 sm:p-6 border-b border-slate-100 bg-white">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
-          <div className="space-y-1 min-w-0">
-            {/* Breadcrumb Tag */}
-            <div className="flex items-center gap-2">
-              <span className="px-2 py-0.5 rounded-md bg-blue-50 text-blue-600 font-semibold text-[10px] tracking-wide uppercase border border-blue-100 shrink-0">
-                PERSONAL AI JOURNAL
-              </span>
-              <span className="text-xs text-slate-400 font-medium truncate">
-                • Strategic Reflection Track
-              </span>
-            </div>
-
-            {/* Main Title */}
-            <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-slate-900 tracking-tight truncate">
-              {messages.length > 0 && messages[0]?.content
-                ? messages[0].content.slice(0, 50) + (messages[0].content.length > 50 ? '...' : '')
-                : 'Personal AI Journal Reflection'}
-            </h1>
+      <div className="p-4 sm:p-5 border-b border-slate-100 bg-white">
+        <div className="flex items-center justify-between gap-3 sm:gap-4">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="px-2.5 py-1 rounded-md bg-blue-50 text-blue-600 font-semibold text-xs tracking-wide uppercase border border-blue-100 shrink-0">
+              Personal AI Journal
+            </span>
+            <span className="text-xs text-slate-400 font-medium truncate">
+              • Strategic Reflection Track
+            </span>
           </div>
 
           {/* Specified Spaces for Action Icons to prevent mobile compaction */}
@@ -404,41 +393,17 @@ export const ChatStream: React.FC<ChatStreamProps> = ({
       {/* Messages Scroll Area */}
       <div className="flex-1 overflow-y-auto p-3 sm:p-6 space-y-5 sm:space-y-6 bg-slate-50/40">
         {messages.length === 0 ? (
-          /* Empty / Welcome State with Prompt Starters */
-          <div className="h-full flex flex-col items-center justify-center text-center max-w-lg mx-auto py-8 space-y-5 px-2">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white flex items-center justify-center shadow-md shrink-0">
-              <RocketLogo className="text-white" size={24} />
+          /* Empty State - Chat starts clean with no pre-given chats */
+          <div className="h-full flex flex-col items-center justify-center text-center max-w-sm mx-auto py-16 px-4">
+            <div className="w-12 h-12 rounded-2xl bg-slate-100 border border-slate-200/80 text-slate-400 flex items-center justify-center mb-3.5 shadow-2xs">
+              <RocketLogo className="text-slate-400" size={22} />
             </div>
-
-            <div className="space-y-1.5">
-              <h2 className="text-lg font-bold text-slate-900">
-                Begin Today's Strategic Reflection
-              </h2>
-              <p className="text-xs sm:text-sm text-slate-500 leading-relaxed">
-                Reflect on engineering leadership, strategic milestones, or team challenges. The journal synthesizes executive summaries and action items in real time.
-              </p>
-            </div>
-
-            {/* Quick Starters */}
-            <div className="w-full space-y-2 text-left pt-2">
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider pl-1">
-                Suggested Reflection Starters
-              </span>
-              {ARCHITECTURAL_PROMPTS.slice(0, 3).map((prompt, i) => (
-                <button
-                  key={i}
-                  onClick={() => setInputText(prompt)}
-                  className="w-full p-3 rounded-2xl bg-white hover:bg-blue-50/60 border border-slate-200/90 hover:border-blue-300 text-xs text-slate-700 transition cursor-pointer text-left shadow-2xs group"
-                >
-                  <div className="flex items-start gap-2.5">
-                    <Sparkles className="w-3.5 h-3.5 text-blue-500 group-hover:text-blue-600 shrink-0 mt-0.5" />
-                    <span className="font-medium text-slate-800 line-clamp-2 leading-relaxed">
-                      {prompt}
-                    </span>
-                  </div>
-                </button>
-              ))}
-            </div>
+            <h2 className="text-sm font-semibold text-slate-700">
+              Journal is empty
+            </h2>
+            <p className="text-xs text-slate-400 mt-1 max-w-xs leading-relaxed">
+              Start typing below to record your reflections, notes, or milestones.
+            </p>
           </div>
         ) : (
           messages.map((msg, index) => {

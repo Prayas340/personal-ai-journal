@@ -12,62 +12,25 @@ import { AuthModal } from './components/AuthModal';
 import { ChatStream } from './components/ChatStream';
 import { extractSearchRelatedTags } from './lib/tagExtractor';
 
-// Initial baseline reflection messages for executive leadership journal
-const DEFAULT_INITIAL_MESSAGES: ChatMessage[] = [
-  {
-    id: 'init-msg-1',
-    role: 'user',
-    content:
-      'Reflecting on our engineering roadmap and service migration today. Deployment latency dropped 45%, but team context-switching between operational workflows was high. We need to systematize our onboarding checklist, improve team documentation, and streamline our weekly sprint reviews.',
-    timestamp: '10:14 AM'
-  },
-  {
-    id: 'init-msg-2',
-    role: 'model',
-    content: '',
-    timestamp: '10:14 AM',
-    executiveSummary:
-      'Key engineering milestone achieved with a 45% latency improvement across production services. Operational context-switching remains the primary bottleneck for team velocity. Prioritize systematizing sprint onboarding, automating verification checks, and consolidating cross-team documentation.',
-    actionItems: [
-      {
-        id: 'act-1',
-        task: 'Publish service performance baseline metrics to engineering team dashboard',
-        priority: 'Medium',
-        status: 'completed'
-      },
-      {
-        id: 'act-2',
-        task: 'Consolidate engineering onboarding checklist and environment setup guide',
-        priority: 'High',
-        status: 'pending'
-      },
-      {
-        id: 'act-3',
-        task: 'Schedule bi-weekly architecture review to streamline team workflows',
-        priority: 'Low',
-        status: 'pending'
-      }
-    ],
-    tags: ['Roadmap', 'Migration', 'Latency', 'Onboarding']
-  }
-];
-
 export default function App() {
-  // Authentication State
-  const [user, setUser] = useState<UserProfile | null>(() => ({
-    uid: 'priya-sharma-apac',
-    email: 'priya.sharma@cloudlab.dev',
-    displayName: 'Dr. Priya Sharma',
-    photoURL:
-      'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=160&auto=format&fit=crop',
-    isDemo: true
-  }));
+  // Authentication State: Null by default until the user explicitly signs in
+  const [user, setUser] = useState<UserProfile | null>(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('journal_user');
+      if (stored) {
+        try {
+          return JSON.parse(stored);
+        } catch (e) {}
+      }
+    }
+    return null;
+  });
 
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
-  // Chat State
+  // Chat State - Starts completely empty
   const [activeJournalId, setActiveJournalId] = useState<string>(() => `journal-${Date.now()}`);
-  const [messages, setMessages] = useState<ChatMessage[]>(DEFAULT_INITIAL_MESSAGES);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -76,13 +39,17 @@ export default function App() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       if (firebaseUser) {
-        setUser({
+        const u: UserProfile = {
           uid: firebaseUser.uid,
           email: firebaseUser.email,
-          displayName: firebaseUser.displayName || 'Dr. Priya Sharma',
+          displayName:
+            firebaseUser.displayName ||
+            (firebaseUser.email ? firebaseUser.email.split('@')[0] : 'User'),
           photoURL: firebaseUser.photoURL,
           isDemo: false
-        });
+        };
+        setUser(u);
+        localStorage.setItem('journal_user', JSON.stringify(u));
       }
     });
     return () => unsubscribe();
@@ -90,11 +57,9 @@ export default function App() {
 
   // Helper to fetch authorization header
   const getAuthHeader = async () => {
-    if (user && !user.isDemo) {
-      const token = await getIdToken();
-      if (token) return `Bearer ${token}`;
-    }
-    return `Bearer demo-session-token-${user?.uid || 'evaluator'}`;
+    const token = await getIdToken();
+    if (token) return `Bearer ${token}`;
+    return `Bearer demo-session-token-${user?.uid || 'guest'}`;
   };
 
   // 2. Send message through Gemini Chat Endpoint
@@ -223,13 +188,8 @@ export default function App() {
     try {
       await logoutUser();
     } catch {}
-    setUser({
-      uid: 'guest-innovator',
-      email: 'guest@cloudlab.dev',
-      displayName: 'Guest Innovator',
-      photoURL: null,
-      isDemo: true
-    });
+    setUser(null);
+    localStorage.removeItem('journal_user');
   };
 
   return (

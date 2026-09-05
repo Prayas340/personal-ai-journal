@@ -36,10 +36,10 @@ export const Navbar: React.FC<NavbarProps> = ({
     return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
   };
 
-  // Dr. Priya Sharma default display info if matching mockup
-  const displayName = user?.displayName || 'Dr. Priya Sharma';
-  const email = user?.email || 'priya.sharma@cloudlab.dev';
-  const avatarUrl = user?.photoURL || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=160&auto=format&fit=crop';
+  const displayName = user?.displayName || (user?.email ? user.email.split('@')[0] : '');
+  const email = user?.email || '';
+  const avatarUrl = user?.photoURL;
+  const initial = (displayName || email || 'U').charAt(0).toUpperCase();
 
   return (
     <header className="bg-transparent pt-3 pb-1 px-4 sm:px-6">
@@ -62,7 +62,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             </div>
           </div>
 
-          {/* Right: Session Timer & User Profile */}
+          {/* Right: Session Timer & User Profile / Sign In */}
           <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
             {/* Session Timer Badge */}
             <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100/90 border border-slate-200/90 text-xs font-medium text-slate-600 shadow-2xs shrink-0">
@@ -70,76 +70,80 @@ export const Navbar: React.FC<NavbarProps> = ({
               <span>Session Active: {formatTimer(secondsRemaining)} remaining</span>
             </div>
 
-            {/* User Profile Card with Dropdown */}
-            <div className="relative shrink-0">
+            {/* If Not Logged In: Show Sign In Button */}
+            {!user ? (
               <button
-                onClick={() => setShowUserMenu(!showUserMenu)}
-                className="flex items-center gap-2 p-1 sm:pr-2.5 rounded-full hover:bg-white/80 border border-transparent hover:border-slate-200 transition text-left cursor-pointer shrink-0"
+                onClick={onOpenAuthModal}
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-xs transition cursor-pointer shrink-0"
               >
-                <div className="w-8 h-8 rounded-full overflow-hidden ring-2 ring-blue-500/20 shadow-2xs bg-slate-200 shrink-0">
-                  <img
-                    src={avatarUrl}
-                    alt={displayName}
-                    className="w-full h-full object-cover"
-                    referrerPolicy="no-referrer"
-                    onError={(e) => {
-                      (e.currentTarget as HTMLElement).style.display = 'none';
-                    }}
-                  />
-                </div>
-                <div className="hidden md:flex flex-col">
-                  <div className="flex items-center gap-1">
-                    <span className="text-xs font-semibold text-slate-800 leading-tight">
-                      {displayName}
-                    </span>
-                    <ChevronDown className="w-3 h-3 text-slate-400 shrink-0" />
-                  </div>
-                  <span className="text-[10px] text-slate-500 leading-tight">
-                    {email}
-                  </span>
-                </div>
+                <LogIn className="w-3.5 h-3.5" />
+                <span>Sign In</span>
               </button>
-
-              {/* User Dropdown Menu */}
-              {showUserMenu && (
-                <div className="absolute right-0 mt-2 w-56 bg-white border border-slate-200 rounded-2xl shadow-xl py-2 z-50 text-xs text-slate-700 animate-in fade-in zoom-in-95">
-                  <div className="px-3 py-2 border-b border-slate-100">
-                    <p className="font-semibold text-slate-900">{displayName}</p>
-                    <p className="text-[11px] text-slate-500 truncate">{email}</p>
-                    <span className="inline-flex items-center gap-1 mt-1 text-[10px] font-medium text-emerald-600">
-                      <CheckCircle2 className="w-3 h-3" />
-                      {user?.isDemo ? 'Journal Demo Mode' : 'Firebase Verified'}
-                    </span>
+            ) : (
+              /* User Profile Card with Dropdown (Only when logged in) */
+              <div className="relative shrink-0">
+                <button
+                  onClick={() => setShowUserMenu(!showUserMenu)}
+                  className="flex items-center gap-2 p-1 sm:pr-2.5 rounded-full hover:bg-white/80 border border-transparent hover:border-slate-200 transition text-left cursor-pointer shrink-0"
+                >
+                  <div className="w-8 h-8 rounded-full overflow-hidden ring-2 ring-blue-500/20 shadow-2xs bg-indigo-600 flex items-center justify-center text-white font-bold text-xs shrink-0">
+                    {avatarUrl ? (
+                      <img
+                        src={avatarUrl}
+                        alt={displayName}
+                        className="w-full h-full object-cover"
+                        referrerPolicy="no-referrer"
+                        onError={(e) => {
+                          (e.currentTarget as HTMLElement).style.display = 'none';
+                        }}
+                      />
+                    ) : (
+                      <span>{initial}</span>
+                    )}
                   </div>
+                  <div className="hidden md:flex flex-col">
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs font-semibold text-slate-800 leading-tight">
+                        {displayName}
+                      </span>
+                      <ChevronDown className="w-3 h-3 text-slate-400 shrink-0" />
+                    </div>
+                    {email && (
+                      <span className="text-[10px] text-slate-500 leading-tight truncate max-w-[140px]">
+                        {email}
+                      </span>
+                    )}
+                  </div>
+                </button>
 
-                  <div className="py-1">
-                    {user && !user.isDemo ? (
+                {/* User Dropdown Menu */}
+                {showUserMenu && (
+                  <div className="absolute right-0 mt-2 w-56 bg-white border border-slate-200 rounded-2xl shadow-xl py-2 z-50 text-xs text-slate-700 animate-in fade-in zoom-in-95">
+                    <div className="px-3 py-2 border-b border-slate-100">
+                      <p className="font-semibold text-slate-900">{displayName}</p>
+                      {email && <p className="text-[11px] text-slate-500 truncate">{email}</p>}
+                      <span className="inline-flex items-center gap-1 mt-1 text-[10px] font-medium text-emerald-600">
+                        <CheckCircle2 className="w-3 h-3" />
+                        {user.isDemo ? 'Journal Guest Session' : 'Firebase Verified'}
+                      </span>
+                    </div>
+
+                    <div className="py-1">
                       <button
                         onClick={() => {
                           setShowUserMenu(false);
                           onSignOut();
                         }}
-                        className="w-full text-left px-3 py-1.5 hover:bg-rose-50 flex items-center gap-2 text-rose-600"
+                        className="w-full text-left px-3 py-1.5 hover:bg-rose-50 flex items-center gap-2 text-rose-600 cursor-pointer"
                       >
                         <LogOut className="w-3.5 h-3.5" />
                         Sign Out
                       </button>
-                    ) : (
-                      <button
-                        onClick={() => {
-                          setShowUserMenu(false);
-                          onOpenAuthModal();
-                        }}
-                        className="w-full text-left px-3 py-1.5 hover:bg-blue-50 flex items-center gap-2 text-blue-600 font-medium"
-                      >
-                        <LogIn className="w-3.5 h-3.5" />
-                        Sign In with Google / Email
-                      </button>
-                    )}
+                    </div>
                   </div>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>
